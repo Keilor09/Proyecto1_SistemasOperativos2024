@@ -1,19 +1,8 @@
-all:
-	echo "cpu.c, memoria.c, disco.c"
+#Regla para compilar el programa
+programa: 
+	@gcc -o programa programa.c -Wall
 
-build:
-	gcc -o cpu cpu.c -Wall
-	gcc -o memoria memoria.c -Wall
-	gcc -o disco disco.c -Wall
-	
-run:
-	./cpu
-	./memoria
-	./disco
-
+#Regla para eliminar el programa
 clean:
-	rm cpu
-	rm memoria
-	rm disco
-	
+	@rm programa
 	
