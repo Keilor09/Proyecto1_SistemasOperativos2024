@@ -26,11 +26,17 @@ void obtenerEstadisticas(char* argv[]) {
         } else if (strcmp(argv[1], "memoria") == 0) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a memoria por lo que llama al metodo desarrollado en memoria.c
 
         } else if (strcmp(argv[1], "disco") == 0) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a disco por lo que llama al metodo desarrollado en disco.c
-            if (strcmp(argv[2], "mib") == 0) { // Compara el segundo argumento, si es mib utiliza el comando para ver la memoria en MiB
+            if (strcmp(argv[2], "tm") == 0) { // Compara el segundo argumento, si es mib utiliza el comando para ver la memoria en MiB
                 obtenerUtilizacionDiscoMiB(pipefd);
             }
-            else if (strcmp(argv[2], "gib") == 0) { // Compara el segundo argumento, si es gib utiliza el comando para ver la memoria en GiB
+            else if (strcmp(argv[2], "tg") == 0) { // Compara el segundo argumento, si es gib utiliza el comando para ver la memoria en GiB
                 obtenerUtilizacionDiscoGiB(pipefd);
+            }
+            else if (strcmp(argv[2], "em") == 0) {
+                obtenerLibreDiscoMiB(pipefd);
+            }
+            else if (strcmp(argv[2], "eg") == 0) {
+                obtenerLibreDiscoGiB(pipefd);
             }
         } else {
             printf("Opcion invalida\n"); // Argumento recibido no es valido
