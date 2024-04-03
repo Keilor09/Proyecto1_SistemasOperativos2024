@@ -2,5 +2,5 @@
 #include <stdlib.h>
 
 void pruebaCpu() {
-   printf("testCpu");
+   printf("testCpusadas");
 }
