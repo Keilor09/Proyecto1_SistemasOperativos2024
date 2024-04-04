@@ -39,3 +39,5 @@ void obtenerUtilizacionCPU(int pipefd[2]) { // Obtiene el porcentaje de utilizac
 
 
 
+
+
