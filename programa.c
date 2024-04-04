@@ -20,12 +20,13 @@ void obtenerEstadisticas(char* argv[]) {
         printf("Error en creacion de hijo");
         exit(0);
     } else if (pid == 0) { // Proceso hijo
-
+        close(pipefd[0]);
         if (strcmp(argv[1], "cpu") == 0) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a CPU por lo que llama al metodo desarrollado en cpu.c
             obtenerUtilizacionCPU(pipefd);  // Llama al metodo y le envia el pipe como parametro
             close(pipefd[1]);   // Cierra extremo de escritura        
         } else if (strcmp(argv[1], "memoria") == 0) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a memoria por lo que llama al metodo desarrollado en memoria.c
-
+            printf("PID        Nombre               Porcentaje de uso\n");
+            obtenerUtilizacionMemoria(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura
         } else if (strcmp(argv[1], "disco") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si es disco y despues no viene nada entonces por defecto llama al metodo de porcentaje de uso y porcentaje libre con GiB
             obtenerPorcentajeUsoDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
