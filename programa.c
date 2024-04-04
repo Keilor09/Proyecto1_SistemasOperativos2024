@@ -24,7 +24,18 @@ void obtenerEstadisticas(char* argv[]) {
         if (strcmp(argv[1], "cpu") == 0) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a CPU por lo que llama al metodo desarrollado en cpu.c
             obtenerUtilizacionCPU(pipefd);  // Llama al metodo y le envia el pipe como parametro
             close(pipefd[1]);   // Cierra extremo de escritura        
-        } else if (strcmp(argv[1], "memoria") == 0) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a memoria por lo que llama al metodo desarrollado en memoria.c
+        } else if (strcmp(argv[1], "memoria") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a memoria por lo que llama al metodo desarrollado en memoria.c
+            printf("Memoria virtual\n");
+            printf("PID        Nombre               Porcentaje de uso\n");
+            obtenerUtilizacionMemoria(pipefd);
+            close(pipefd[1]);
+        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "r") == 0) {
+            printf("Memoria real\n");
+            printf("PID        Nombre               Porcentaje de uso\n");
+            obtenerUtilizacionMemoriaReal(pipefd);
+            close(pipefd[1]); // Cierra extremo de escritura
+        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "v") == 0) {
+            printf("Memoria virtual\n");
             printf("PID        Nombre               Porcentaje de uso\n");
             obtenerUtilizacionMemoria(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura

@@ -66,5 +66,79 @@ void obtenerUtilizacionMemoria(int pipefd[2]) {
     }
 
     closedir(directory); // Cierra directorio
+    close(pipefd[1]);
 }
 
+
+void obtenerUtilizacionMemoriaReal(int pipefd[2]) {
+    DIR *directory;
+    struct dirent *entry;
+    FILE *file;
+    char path[40], linea[100], nombre[100];
+    int pid;
+    long int size, resident, share, text, lib, data, dt;
+
+    // Abrir el directorio /proc
+    directory = opendir("/proc");
+    if (directory == NULL) {
+        perror("No se pudo abrir /proc");
+        return;
+    }
+
+    // Leer cada entrada en el directorio /proc
+    while ((entry = readdir(directory)) != NULL) {
+        if ((pid = atoi(entry->d_name)) != 0) {  // Comprobar si la entrada es un ID de proceso
+            // Construir la ruta al archivo /proc/[pid]/statm
+            sprintf(path, "/proc/%d/statm", pid);
+
+            // Abrir el archivo /proc/[pid]/statm
+            file = fopen(path, "r");
+            if (file == NULL) {
+                perror("No se pudo abrir /proc/[pid]/statm");
+                return;
+            }
+
+            // Leer el tamaño total de la memoria del archivo statm
+            if (fscanf(file, "%ld %ld %ld %ld %ld %ld %ld", &size, &resident, &share, &text, &lib, &data, &dt) != 7) {
+                perror("Error al leer /proc/[pid]/statm");
+                fclose(file);
+                continue; // Pasar al siguiente proceso si no se puede leer correctamente
+            }
+            fclose(file);
+
+            // Calcular el tamaño total de la memoria utilizada (residente + swap)
+            long int total_memory = resident + dt; // resident es la memoria residente y dt es la memoria swap
+
+            // Construir la ruta al archivo /proc/[pid]/status
+            sprintf(path, "/proc/%d/status", pid);
+
+            // Abrir el archivo /proc/[pid]/status
+            file = fopen(path, "r");
+            if (file == NULL) {
+                perror("No se pudo abrir /proc/[pid]/status");
+                return;
+            }
+
+            // Leer el nombre del proceso del archivo status
+            if (fgets(linea, sizeof(linea), file) == NULL) {
+                perror("Error al leer /proc/[pid]/status");
+                fclose(file);
+                continue; // Pasar al siguiente proceso si no se puede leer correctamente
+            }
+            // Buscar el nombre del proceso
+            sscanf(linea, "Name: %s", nombre);
+            fclose(file);
+
+            // Convertir el ID del proceso, nombre y porcentaje de memoria permanente a cadena
+            char buffer[256];
+            float percentage = (float)total_memory / size * 100;
+            int n = sprintf(buffer, "%-10d %-20s %-20.2f%%\n", pid, nombre, percentage);
+
+            // Escribir la cadena en el pipe
+            write(pipefd[1], buffer, n);
+        }
+    }
+
+    closedir(directory);
+    close(pipefd[1]); // Cerrar el extremo de escritura del pipe al finalizar
+}
