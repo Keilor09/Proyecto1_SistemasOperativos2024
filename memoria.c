@@ -9,7 +9,7 @@ void obtenerUtilizacionMemoria(int pipefd[2]) {
     FILE *file; // Archivo
     char path[40], linea[100], nombre[100]; // Ruta de archivo, linea y nombre del proceso
     int pid; // id proceso
-    long int vtam, total_vtam = 0, total_mem = 0; // Tamaño mem virtual, tamaño total de la vmem, mem total
+    long int vtam, totalVtam = 0, totalMem = 0; // Tamaño mem virtual, tamaño total de la vmem, mem total
 
     
     directory = opendir("/proc"); // Abrir directorio proc
@@ -44,21 +44,21 @@ void obtenerUtilizacionMemoria(int pipefd[2]) {
             
             while (fgets(linea, sizeof(linea), file)) { // Lee campo de VmSize en status
                 if (sscanf(linea, "VmSize: %ld kB", &vtam) == 1) {
-                    total_mem += vtam;
+                    totalMem += vtam;
                     break;
                 }
             }
             fclose(file);
 
             
-            total_vtam += vtam; // Acumula el tamaño de mem virtual
+            totalVtam += vtam; // Acumula el tamaño de mem virtual
 
             
-            float percentage = (float)vtam / total_mem * 100; // Calcula porcentaje de mem virtual
+            float porcentaje = (float)vtam / totalMem * 100; // Calcula porcentaje de mem virtual
 
             
             char buffer[256]; // Convierte PID, nombre y porcentaje de mem virtual a cadena
-            int n = sprintf(buffer, "%-10d %-20s %-20.2f%%\n", pid, nombre, percentage);
+            int n = sprintf(buffer, "%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
 
             
             write(pipefd[1], buffer, n); // Escribe en pipe
@@ -107,7 +107,7 @@ void obtenerUtilizacionMemoriaReal(int pipefd[2]) {
             fclose(file);
 
             // Calcular el tamaño total de la memoria utilizada (residente + swap)
-            long int total_memory = resident + dt; // resident es la memoria residente y dt es la memoria swap
+            long int totalMem = resident + dt; // resident es la memoria residente y dt es la memoria swap
 
             // Construir la ruta al archivo /proc/[pid]/status
             sprintf(path, "/proc/%d/status", pid);
@@ -131,8 +131,8 @@ void obtenerUtilizacionMemoriaReal(int pipefd[2]) {
 
             // Convertir el ID del proceso, nombre y porcentaje de memoria permanente a cadena
             char buffer[256];
-            float percentage = (float)total_memory / size * 100;
-            int n = sprintf(buffer, "%-10d %-20s %-20.2f%%\n", pid, nombre, percentage);
+            float porcentaje = (float)totalMem / size * 100;
+            int n = sprintf(buffer, "%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
 
             // Escribir la cadena en el pipe
             write(pipefd[1], buffer, n);

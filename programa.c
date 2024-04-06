@@ -1,6 +1,4 @@
-#include <unistd.h>
 #include <sys/types.h>
-#include <string.h>
 #include "cpu.c"
 #include "memoria.c"
 #include "disco.c"
@@ -29,12 +27,12 @@ void obtenerEstadisticas(char* argv[]) {
             printf("PID        Nombre               Porcentaje de uso\n");
             obtenerUtilizacionMemoria(pipefd);
             close(pipefd[1]);
-        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "r") == 0) {
+        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-r") == 0) {
             printf("Memoria real\n");
             printf("PID        Nombre               Porcentaje de uso\n");
             obtenerUtilizacionMemoriaReal(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura
-        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "v") == 0) {
+        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-v") == 0) {
             printf("Memoria virtual\n");
             printf("PID        Nombre               Porcentaje de uso\n");
             obtenerUtilizacionMemoria(pipefd);
@@ -43,11 +41,11 @@ void obtenerEstadisticas(char* argv[]) {
             obtenerPorcentajeUsoDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
             obtenerPorcentajeEspacioLibreDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
             close(pipefd[1]); // Cierra extremo de escritura 
-        } else if (strcmp(argv[1], "disco") == 0 && strcmp(argv[2], "tm") == 0) { // Compara el argumento recibido, si es disco y despues tm entonces llama al metodo de porcentaje de uso y porcentaje libre con MiB
+        } else if (strcmp(argv[1], "disco") == 0 && strcmp(argv[2], "-tm") == 0) { // Compara el argumento recibido, si es disco y despues tm entonces llama al metodo de porcentaje de uso y porcentaje libre con MiB
             obtenerPorcentajeUsoDiscoEnMiB(pipefd); // Llama al metodo y le envia el pipe
             obtenerPorcentajeEspacioLibreDiscoEnMiB(pipefd); // Llama al metodo y le envia el pipe
             close(pipefd[1]); // Cierra extremo de escritura 
-        } else if (strcmp(argv[1], "disco") == 0 && strcmp(argv[2], "tg") == 0) { // Compara el argumento recibido, si es disco y despues tg entonces llama al metodo de porcentaje de uso y porcentaje libre con GiB
+        } else if (strcmp(argv[1], "disco") == 0 && strcmp(argv[2], "-tg") == 0) { // Compara el argumento recibido, si es disco y despues tg entonces llama al metodo de porcentaje de uso y porcentaje libre con GiB
             obtenerPorcentajeUsoDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
             obtenerPorcentajeEspacioLibreDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
             close(pipefd[1]); // Cierra extremo de escritura 
