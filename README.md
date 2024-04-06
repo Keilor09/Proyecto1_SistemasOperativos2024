@@ -9,6 +9,9 @@ Reyder Fernández Mejias
 Para compilar el proyecto:
 make programa
 
+Para eliminar el archivo complilado
+make clean
+
 En la parte de CPU:
 
 ./programa cpu 
