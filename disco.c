@@ -10,7 +10,7 @@ void obtenerPorcentajeUsoDiscoEnMiB(int pipefd[2]) {
     double porcentaje; // Almacenar porcentaje de uso del disco
 
     // Ejecutar el comando df -BM y capturar su salida en modo MiB
-    fp = popen("df -BM", "r"); // Abrir proceso que ejecuta el comando en modo de lectura
+    fp = popen("df -m /", "r"); // Abrir proceso que ejecuta el comando en modo de lectura
     if (fp == NULL) { // Validacion
         perror("Error al ejecutar df -BM");
         exit(EXIT_FAILURE);
@@ -38,7 +38,7 @@ void obtenerPorcentajeUsoDiscoEnGiB(int pipefd[2]) {
     double porcentaje; // Almacenar porcentaje de uso del disco
 
     // Ejecutar el comando df -BG y capturar su salida en modo GiB
-    fp = popen("df -BG", "r"); // Abrir proceso que ejecuta el comando en modo de lectura
+    fp = popen("df -BG /", "r"); // Abrir proceso que ejecuta el comando en modo de lectura
     if (fp == NULL) { // Validacion
         perror("Error al ejecutar df -BG");
         exit(EXIT_FAILURE);
@@ -55,7 +55,7 @@ void obtenerPorcentajeUsoDiscoEnGiB(int pipefd[2]) {
         }
     }
 
-    // Cerrar el proceso y el pipe
+    // Cerrar el proceso 
     pclose(fp);
 }
 
@@ -83,7 +83,7 @@ void obtenerPorcentajeEspacioLibreDiscoEnGiB(int pipefd[2]) {
         }
     }
 
-    // Cerrar el proceso y el pipe
+    // Cerrar el proceso
     pclose(fp);
 }
 
@@ -111,6 +111,6 @@ void obtenerPorcentajeEspacioLibreDiscoEnMiB(int pipefd[2]) {
         }
     }
 
-    // Cerrar el proceso y el pipe
+    // Cerrar el proceso 
     pclose(fp);
 }
