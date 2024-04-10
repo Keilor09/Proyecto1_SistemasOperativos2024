@@ -17,6 +17,8 @@ En la parte de CPU:
 ./programa cpu 
 Muestra el porcentaje de uso del CPU
 
+./programa cpu pid
+Muestra el porcentaje de uso del CPU del PID en los ultimos 5 minutos
 
 En la parte de Memoria:
 

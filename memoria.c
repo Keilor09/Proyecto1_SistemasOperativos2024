@@ -58,7 +58,7 @@ void obtenerUtilizacionMemoria(int pipefd[2]) {
 
             
             char buffer[256]; // Convierte PID, nombre y porcentaje de mem virtual a cadena
-            int n = sprintf(buffer, "%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
+            int n = sprintf(buffer, "[V]%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
 
             
             write(pipefd[1], buffer, n); // Escribe en pipe
@@ -132,7 +132,7 @@ void obtenerUtilizacionMemoriaReal(int pipefd[2]) {
             // Convertir el ID del proceso, nombre y porcentaje de memoria permanente a cadena
             char buffer[256];
             float porcentaje = (float)totalMem / size * 100;
-            int n = sprintf(buffer, "%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
+            int n = sprintf(buffer, "[R]%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
 
             // Escribir la cadena en el pipe
             write(pipefd[1], buffer, n);

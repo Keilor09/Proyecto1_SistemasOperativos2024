@@ -9,32 +9,29 @@ void obtenerEstadisticas(char* argv[]) {
     
     if (pipe(pipefd) == -1) { // Crear pipe
         printf("Error en pipe");
-        exit(0);
+        exit(EXIT_FAILURE);
     }
 
     pid_t pid = fork(); //Crear proceso hijo
 
     if (pid < 0) {
         printf("Error en creacion de hijo");
-        exit(0);
+        exit(EXIT_FAILURE);
     } else if (pid == 0) { // Proceso hijo
-        close(pipefd[0]);
-        if (strcmp(argv[1], "cpu") == 0) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a CPU por lo que llama al metodo desarrollado en cpu.c
-            obtenerUtilizacionCPU(pipefd);  // Llama al metodo y le envia el pipe como parametro
-            close(pipefd[1]);   // Cierra extremo de escritura        
+        close(pipefd[0]); // Cierra extremo de lectura
+        if (strcmp(argv[1], "cpu") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a CPU por lo que llama al metodo desarrollado en cpu.c
+            obtenerUtilizacionCPU(pipefd);
+            close(pipefd[1]);   // Cierra extremo de escritura   
+        } else if (strcmp(argv[1], "cpu") == 0 && argv[2] != NULL) {
+            obtenerUtilizacionCPUProceso(pipefd, argv[2]);
+            close(pipefd[1]); // Cierra extremo de escritura 
         } else if (strcmp(argv[1], "memoria") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a memoria por lo que llama al metodo desarrollado en memoria.c
-            printf("Memoria virtual\n");
-            printf("PID        Nombre               Porcentaje de uso\n");
             obtenerUtilizacionMemoria(pipefd);
-            close(pipefd[1]);
-        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-r") == 0) {
-            printf("Memoria real\n");
-            printf("PID        Nombre               Porcentaje de uso\n");
+            close(pipefd[1]); // Cierra extremo de escritura 
+        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-r") == 0) { // Si el segundo argumento es -r, llama al metodo que devuelve la memoria real
             obtenerUtilizacionMemoriaReal(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura
-        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-v") == 0) {
-            printf("Memoria virtual\n");
-            printf("PID        Nombre               Porcentaje de uso\n");
+        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-v") == 0) { // Si el segundo argumento es -v, llama al metodo que devuelve la memoria virtual
             obtenerUtilizacionMemoria(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura
         } else if (strcmp(argv[1], "disco") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si es disco y despues no viene nada entonces por defecto llama al metodo de porcentaje de uso y porcentaje libre con GiB
