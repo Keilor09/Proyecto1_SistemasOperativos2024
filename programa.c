@@ -1,68 +1,98 @@
 #include <sys/types.h>
+#include <sys/wait.h>
+#include <dirent.h>
 #include "cpu.c"
-#include "memoria.c"
 #include "disco.c"
+#include "memoria.c"
 
-// Funcion principal que controla la obtencion de estadisticas
-void obtenerEstadisticas(char* argv[]) {
-    int pipefd[2];
-    
-    if (pipe(pipefd) == -1) { // Crear pipe
-        printf("Error en pipe");
-        exit(EXIT_FAILURE);
-    }
+// Prototipos de las funciones externas (definidas en sus respectivos archivos (cpu.c, memoria.c, disco.c))
+void obtenerUtilizacionCPU(int pipefd[]);
+void obtenerUtilizacionCPUProceso(int pipefd[], char* proceso);
+void obtenerUtilizacionMemoriaVirtual(int pipefd[]);
+void obtenerUtilizacionMemoriaReal(int pipefd[]);
+void obtenerPorcentajeUsoDiscoEnGiB(int pipefd[]);
+void obtenerPorcentajeEspacioLibreDiscoEnGiB(int pipefd[]);
+void obtenerPorcentajeUsoDiscoEnMiB(int pipefd[]);
+void obtenerPorcentajeEspacioLibreDiscoEnMiB(int pipefd[]);
 
-    pid_t pid = fork(); //Crear proceso hijo
-
-    if (pid < 0) {
-        printf("Error en creacion de hijo");
-        exit(EXIT_FAILURE);
-    } else if (pid == 0) { // Proceso hijo
-        close(pipefd[0]); // Cierra extremo de lectura
-        if (strcmp(argv[1], "cpu") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a CPU por lo que llama al metodo desarrollado en cpu.c
-            obtenerUtilizacionCPU(pipefd);
-            close(pipefd[1]);   // Cierra extremo de escritura   
-        } else if (strcmp(argv[1], "cpu") == 0 && argv[2] != NULL) {
-            obtenerUtilizacionCPUProceso(pipefd, argv[2]);
-            close(pipefd[1]); // Cierra extremo de escritura 
-        } else if (strcmp(argv[1], "memoria") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a memoria por lo que llama al metodo desarrollado en memoria.c
-            obtenerUtilizacionMemoriaVirtual(pipefd);
-            close(pipefd[1]); // Cierra extremo de escritura 
-        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-r") == 0) { // Si el segundo argumento es -r, llama al metodo que devuelve la memoria real
-            obtenerUtilizacionMemoriaReal(pipefd);
-            close(pipefd[1]); // Cierra extremo de escritura
-        } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-v") == 0) { // Si el segundo argumento es -v, llama al metodo que devuelve la memoria virtual
-            obtenerUtilizacionMemoriaVirtual(pipefd);
-            close(pipefd[1]); // Cierra extremo de escritura
-        } else if (strcmp(argv[1], "disco") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si es disco y despues no viene nada entonces por defecto llama al metodo de porcentaje de uso y porcentaje libre con GiB
-            obtenerPorcentajeUsoDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
-            obtenerPorcentajeEspacioLibreDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
-            close(pipefd[1]); // Cierra extremo de escritura 
-        } else if (strcmp(argv[1], "disco") == 0 && strcmp(argv[2], "-tm") == 0) { // Compara el argumento recibido, si es disco y despues tm entonces llama al metodo de porcentaje de uso y porcentaje libre con MiB
-            obtenerPorcentajeUsoDiscoEnMiB(pipefd); // Llama al metodo y le envia el pipe
-            obtenerPorcentajeEspacioLibreDiscoEnMiB(pipefd); // Llama al metodo y le envia el pipe
-            close(pipefd[1]); // Cierra extremo de escritura 
-        } else if (strcmp(argv[1], "disco") == 0 && strcmp(argv[2], "-tg") == 0) { // Compara el argumento recibido, si es disco y despues tg entonces llama al metodo de porcentaje de uso y porcentaje libre con GiB
-            obtenerPorcentajeUsoDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
-            obtenerPorcentajeEspacioLibreDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe
-            close(pipefd[1]); // Cierra extremo de escritura 
-        } else {
-            printf("Opcion invalida\n"); // Argumento recibido no es valido
-            exit(0);
-        }
-    } else { //Proceso padre
-        wait(NULL); // Esperar al hijo
-        close(pipefd[1]); // Cerramos el extremo de escritura del pipe
-        char buffer[1024]; // Almacenar estadisticas recibidas
-
-        read(pipefd[0], buffer, sizeof(buffer)); // Leer desde el pide e imprimir estadisticas recibidas
-        printf("%s\n", buffer); // Imprimir la inforamcion guardad en el buffer
-
-        close(pipefd[0]); // Cerramos el extremo de lectura del pipe
+void manejarCPU(int pipefd[2], char *argv[]) { // Manejar opciones del CPU
+    if (argv[2] == NULL) { // Si no se proporciona ningun argumento se llama a la funcion que obtiene la utilizacion del CPU en general 
+        obtenerUtilizacionCPU(pipefd);
+    } else { // Si se proporciona un argumento se llama al metodo que obtiene la utilizacion del CPU en los ultimos 5 minutos de un PID especifico (en este caso seria el argumento)
+        obtenerUtilizacionCPUProceso(pipefd, argv[2]);
     }
 }
 
-int main(int argc, char *argv[]) { // Funcion main
-    obtenerEstadisticas(argv);  // Llama al metodo desarrollado anteriormente para obtener las estadisticas solicitadas utilizando pipes entre el padre e hijo
+void manejarMemoria(int pipefd[2], char *argv[]) { // Manejar opciones del CPU
+    if (argv[2] == NULL) { // Si no se proporciona ningun argumento se llama a la funcion que obtiene la utilizacion de memoria virtual para todos los procesos
+        obtenerUtilizacionMemoriaVirtual(pipefd);
+    } else if (strcmp(argv[2], "-r") == 0) { // Si se proporciona -r como argumento se llama a la funcion que obtiene la utilizacion de memoria real de todos los procesos
+        obtenerUtilizacionMemoriaReal(pipefd);
+    } else if (strcmp(argv[2], "-v") == 0) { // Si se proporciona -v como argumento se llama a la funcion que obtiene la utilizacion de memoria virtual de todos los procesos
+        obtenerUtilizacionMemoriaVirtual(pipefd);
+    } else { // Validar opcion
+        printf("Argumento no reconocido para memoria\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void manejarDisco(int pipefd[2], char *argv[]) { // Manejar opciones de Disco
+    if (argv[2] == NULL) { // Si no se dan argumentos se llama por defecto al metodo que obtiene la informacion de porcentaje de uso/libre del disco en GiB
+        obtenerPorcentajeUsoDiscoEnGiB(pipefd);
+        obtenerPorcentajeEspacioLibreDiscoEnGiB(pipefd);
+    } else if (strcmp(argv[2], "-tm") == 0) { // Si el argumento es -tm se llama al metodo que obtiene la informacion de porcentaje de uso/libre en MiB
+        obtenerPorcentajeUsoDiscoEnMiB(pipefd);
+        obtenerPorcentajeEspacioLibreDiscoEnMiB(pipefd);
+    } else if (strcmp(argv[2], "-tg") == 0) { // Si el argumento es -tg se llama al metodo que obtiene la informacion de porcentaje de uso/libre en GiB
+        obtenerPorcentajeUsoDiscoEnGiB(pipefd);
+        obtenerPorcentajeEspacioLibreDiscoEnGiB(pipefd);
+    } else { // Validar opcion
+        printf("Argumento no reconocido para disco\n");
+        exit(EXIT_FAILURE);
+    }
+}
+
+void obtenerEstadisticas(char* argv[]) { // Metodo que obtiene las estadisticas solicitadas utilizando pipes entre padre e hijo
+    int pipefd[2]; // Crear pipe para escribir y leer
+    
+    if (pipe(pipefd) == -1) { // Validar si hay error en la creacion del pipe
+        printf("Error en pipe\n");
+        exit(EXIT_FAILURE);
+    }
+
+    pid_t pid = fork(); // Creacion de hijo que se encargara de obtener datos de cpu, memoria y disco
+
+    if (pid < 0) { // Validar creacion del hijo
+        printf("Error en creacion de hijo\n");
+        exit(EXIT_FAILURE);
+    } else if (pid == 0) { // Hijo obteniendo la informacion depediendo de los argumentos de la llamada al programa
+        close(pipefd[0]); // Cerrar extremo de lectura del pipe
+        if (strcmp(argv[1], "cpu") == 0) { // CPU
+            manejarCPU(pipefd, argv); // Llama al metodo declarado anteriormente que maneja la info del cpu, envia como argumentos al pipe y el argumento escrito por el usuario
+        } else if (strcmp(argv[1], "memoria") == 0) { // Memoria
+            manejarMemoria(pipefd, argv); // Llama al metodo declarado anteriormente que maneja la info de la memoria, envia como argumentos al pipe y el argumento escrito por el usuario
+        } else if (strcmp(argv[1], "disco") == 0) { // Disco
+            manejarDisco(pipefd, argv); // Llama al metodo declarado anteriormente que maneja la info del disco, envia como argumentos al pipe y el argumento escrito por el usuario
+        } else { // Validar opcion
+            printf("Opcion invalida\n");
+            exit(EXIT_FAILURE);
+        }
+        close(pipefd[1]); // Cerrar extremo de escritura del pipe
+    } else {
+        close(pipefd[1]); // Cerrar extremo de escritura del pipe
+        wait(NULL); // Esperear a que termine el hijo
+        char buffer[1024]; // Buffer para leer la info que envia el hijo
+        read(pipefd[0], buffer, sizeof(buffer)); // Leer el pipe
+        printf("%s\n", buffer); // Imprimir el buffer con la info que ha enviado el hijo 
+        close(pipefd[0]); // Cerrar extremo de lectura del pipe
+    }
+}
+
+int main(int argc, char *argv[]) { // Main
+    if (argc > 1) {
+        obtenerEstadisticas(argv); // Llamar al metodo de obtener estadisticas declarado anteriormente con el argumento escrito por el usuario
+    } else { // Si no escribe argumento se le pide que escriba uno
+        printf("Por favor proporcione un argumento\n");
+    }
     return 0;
 }
