@@ -26,13 +26,13 @@ void obtenerEstadisticas(char* argv[]) {
             obtenerUtilizacionCPUProceso(pipefd, argv[2]);
             close(pipefd[1]); // Cierra extremo de escritura 
         } else if (strcmp(argv[1], "memoria") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si la funcion strcmp devuelve 0 quiere decir que es igual a memoria por lo que llama al metodo desarrollado en memoria.c
-            obtenerUtilizacionMemoria(pipefd);
+            obtenerUtilizacionMemoriaVirtual(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura 
         } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-r") == 0) { // Si el segundo argumento es -r, llama al metodo que devuelve la memoria real
             obtenerUtilizacionMemoriaReal(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura
         } else if (strcmp(argv[1], "memoria") == 0 && strcmp(argv[2], "-v") == 0) { // Si el segundo argumento es -v, llama al metodo que devuelve la memoria virtual
-            obtenerUtilizacionMemoria(pipefd);
+            obtenerUtilizacionMemoriaVirtual(pipefd);
             close(pipefd[1]); // Cierra extremo de escritura
         } else if (strcmp(argv[1], "disco") == 0 && argv[2] == NULL) { // Compara el argumento recibido, si es disco y despues no viene nada entonces por defecto llama al metodo de porcentaje de uso y porcentaje libre con GiB
             obtenerPorcentajeUsoDiscoEnGiB(pipefd); // Llama al metodo y le envia el pipe

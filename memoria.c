@@ -3,73 +3,67 @@
 #include <string.h>
 #include <unistd.h>
 
-void obtenerUtilizacionMemoria(int pipefd[2]) {
-    DIR *directory; // Manejar directorio
-    struct dirent *entry; // Manejar entradas del directorio
-    FILE *file; // Manejar archivos
-    char path[256], linea[256], nombre[256]; // Buffer para rutas de archivo, lineas leidas y nombres de procesos
-    int pid; // pid de proceso
-    long int vtam, totalMem = 0; // Tamaño mem virtual y total de mem virtual
+void obtenerUtilizacionMemoriaVirtual(int pipefd[2]) {
+    DIR *directory; // Para utilizar en directorio
+    struct dirent *entry; // entraddas del directorio
+    FILE *file; // para archivo
+    char path[256], linea[256], nombre[256]; // buffer para el path, lineas leidas y nombres del prcesos
+    int pid; // pid del proceso
+    long int vsize, totalMemVirtual = 0, swapTotal = 0; // variables para almacenar la informacion de la memoria virtual del proceso y del sistema
 
-    directory = opendir("/proc"); // Abrir proc para info de los procesos
-    if (directory == NULL) { // Validar
+    // Leer el total de memoria física y swap del sistema desde /proc/meminfo para obtener la mem virtual total
+    file = fopen("/proc/meminfo", "r");
+    if (file == NULL) {
+        perror("No se pudo abrir /proc/meminfo");
+        return;
+    }
+
+    while (fgets(linea, sizeof(linea), file)) {
+        if (sscanf(linea, "MemTotal: %ld kB", &totalMemVirtual) == 1 || sscanf(linea, "SwapTotal: %ld kB", &swapTotal) == 1) {
+            totalMemVirtual += swapTotal;  // Sumar el total de memoria y swap para obtener la memoria virtual total
+        }
+    }
+    fclose(file);
+
+    if (totalMemVirtual == 0) { // Validar que el valor de la memoria sea valido para evitar errores
+        perror("No se pudo leer el total de memoria del sistema");
+        return;
+    }
+
+    // Abrir /proc para leer la informacion de los procesos
+    directory = opendir("/proc"); 
+    if (directory == NULL) {
         perror("No se pudo abrir /proc");
         return;
     }
 
-    while ((entry = readdir(directory)) != NULL) { // Iterar entradas de /proc
-        if ((pid = atoi(entry->d_name)) != 0) { // Verifica si es un proceso
-            snprintf(path, sizeof(path), "/proc/%d/status", pid); // Construye ruta al status del proceso
-
+    while ((entry = readdir(directory)) != NULL) {
+        if ((pid = atoi(entry->d_name)) != 0) {
+            snprintf(path, sizeof(path), "/proc/%d/status", pid); // construir ruta al archivvo del  status ddel proceso
             file = fopen(path, "r");
             if (file == NULL) {
-                continue; // Si no puede abrir el archivo continua (para que no se quede pegado en un archivo que no puede abrir por permisos, etc)
+                continue; // Continuar si el archivo no se puede abrir para evitar errores
             }
 
             while (fgets(linea, sizeof(linea), file)) {
-                if (sscanf(linea, "VmSize: %ld kB", &vtam) == 1) { // Busca VmSize para obtener la mem virtual del proceso
-                    totalMem += vtam; // Suma al total global
-                    break;
-                }
-            }
-            fclose(file);
-        }
-    }
-    closedir(directory);
+                if (sscanf(linea, "VmSize: %ld kB", &vsize) == 1) { // Leer la VmSize que contiene la mem virtual del proceso
+                    float porcentaje = (float)vsize / totalMemVirtual * 100; // Hacer el calculo para obtener el porcentajje de uso del proceso
 
-    // Ahora, calcular el porcentaje de memoria utilizada por cada proceso
-    directory = opendir("/proc");
-    if (directory == NULL) {
-        perror("Reapertura de /proc fallida");
-        return;
-    }
+                    // Leer nombre del proceso desde /proc/[pid]/stat
+                    snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+                    FILE *statFile = fopen(path, "r");
+                    if (statFile == NULL) { // Si no se pudo abrir se continua para evitar errores
+                        continue;
+                    }
+                    if (fscanf(statFile, "%*d (%[^)])", nombre) != 1) { // Mejorar extraccion del nombre para manejar espacios y parentesis
+                        strcpy(nombre, "Desconocido");
+                    }
+                    fclose(statFile);
 
-    while ((entry = readdir(directory)) != NULL) { // Itera de nuevo sobre cada proceso para calcular y reportar el uso de memoria
-        if ((pid = atoi(entry->d_name)) != 0) { // Verifica si es un proceso
-            snprintf(path, sizeof(path), "/proc/%d/stat", pid); // Construye ruta al stat del proceso
-            file = fopen(path, "r");
-            if (file == NULL) {
-                continue; // Si no puede abrir el archivo continua (para que no se quede pegado en un archivo que no puede abrir por permisos, etc)
-            }
-
-            fscanf(file, "%*d %s", nombre); // Lee nombre del proceso
-            fclose(file);
-
-            snprintf(path, sizeof(path), "/proc/%d/status", pid); // construye ruta al stat del pid
-            file = fopen(path, "r");
-            if (file == NULL) {
-                continue; // Si no puede abrir el archivo continua (para que no se quede pegado en un archivo que no puede abrir por permisos, etc)
-            }
-
-            while (fgets(linea, sizeof(linea), file)) { // Busca VmSize otra vez para obtener la mem virtual del proceso actual
-                if (sscanf(linea, "VmSize: %ld kB", &vtam) == 1) {
-                    float porcentaje = totalMem > 0 ? (float)vtam / totalMem * 100 : 0; // Calcula porcentaje, primero se verifica si totalMem es mayor que cero para evitar division entre 0
-                                                                                        // Si totalMem = 0, se pone como resultado 0 para no dar datos erroneos
-                    // Preparar buffer para escribir en el pipe la info recolectada
+                    // Escribir en el pipe la información recolectada
                     char buffer[256];
                     int n = snprintf(buffer, sizeof(buffer), "[V]%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
-
-                    write(pipefd[1], buffer, n); // Escribe en el pipe
+                    write(pipefd[1], buffer, n);
                     break;
                 }
             }
@@ -77,76 +71,60 @@ void obtenerUtilizacionMemoria(int pipefd[2]) {
         }
     }
     closedir(directory);
-    close(pipefd[1]); // Cierra el pipe
+    close(pipefd[1]);
 }
 
-
 void obtenerUtilizacionMemoriaReal(int pipefd[2]) {
-    DIR *directory; // Manejar directorio
-    struct dirent *entry; // Manejar entradas de directorio
-    FILE *file; // Manejar archivos
-    char path[256], linea[256], nombre[256]; // Buffer para rutas del archivo, lineas leidas y nombre de procesos
-    int pid; // pid de proceso
-    long int rss, totalMemReal = 0; // Para memoria rss del proceso y la memoria real utilizada
+    DIR *directory; // Para el directorio
+    struct dirent *entry; // manejar entradas del ddirectorio
+    FILE *file; // manejar archivos
+    char path[256], linea[256], nombre[256]; // buffer para el path, linea leida y nombre del pid
+    int pid; // pid del proceso
+    long int rss, totalMemReal = 0; // variables para almacenar la rss y la mem total del sistema
 
-    directory = opendir("/proc"); // Abrir /proc para acceder a la info de los procesos
-    if (directory == NULL) { // Validar
+    // Primero, leer el total de memoria real del sistema desde /proc/meminfo
+    file = fopen("/proc/meminfo", "r");
+    if (file == NULL) {
+        perror("No se pudo abrir /proc/meminfo");
+        return;
+    }
+    while (fgets(linea, sizeof(linea), file)) {
+        if (sscanf(linea, "MemTotal: %ld kB", &totalMemReal) == 1) { // Buscar la linea que tiene el MemTotal para encontrar la mem total real del sistema
+            break;
+        }
+    }
+    fclose(file);
+
+    // Abrir /proc para leer la informacion de los procesos
+    directory = opendir("/proc");
+    if (directory == NULL) { // validar para evitar errores
         perror("No se pudo abrir /proc");
         return;
     }
 
     while ((entry = readdir(directory)) != NULL) {
         if ((pid = atoi(entry->d_name)) != 0) {  // Verifica si es un proceso
-            snprintf(path, sizeof(path), "/proc/%d/status", pid); // Construye ruta al status del proceso
-
+            snprintf(path, sizeof(path), "/proc/%d/stat", pid); // Contruir ruta al archivo que tiene el stat ddel proceso
             file = fopen(path, "r");
             if (file == NULL) {
-                continue; // Si no puede abrir el archivo continua (para que no se quede pegado en un archivo que no puede abrir por permisos, etc)
+                continue; // Continua si no se puede abrir el archivo
             }
-
-            while (fgets(linea, sizeof(linea), file)) {
-                if (sscanf(linea, "VmRSS: %ld kB", &rss) == 1) { // Busca VmRSS para obtener la mem RSS del proceso
-                    totalMemReal += rss; // Suma rss al total global
-                    break;
-                }
+            if (fscanf(file, "%*d (%[^)])", nombre) != 1) { // Extrae el nombre del proceso correctamente teniendo en cuenta espacios y parentesis
+                strcpy(nombre, "Desconocido"); // Si falla la lectura del nombre, asigna un valor predeterminado
             }
             fclose(file);
-        }
-    }
-    closedir(directory);
 
-    // Repite el proceso para calcular el porcentaje de memoria real utilizada por cada proceso.
-    directory = opendir("/proc");
-    if (directory == NULL) {
-        perror("Reapertura de /proc fallida");
-        return;
-    }
-
-    while ((entry = readdir(directory)) != NULL) {
-        if ((pid = atoi(entry->d_name)) != 0) {
-            snprintf(path, sizeof(path), "/proc/%d/stat", pid);
+            snprintf(path, sizeof(path), "/proc/%d/status", pid); // Construir ruta la archivo que tiene status del proceso
             file = fopen(path, "r");
             if (file == NULL) {
-                continue; // Solo continúa si no se puede abrir el archivo
+                continue; // Continua si no se puede abrir el archivo
             }
-
-            fscanf(file, "%*d %s", nombre); // Lee nombre del proceso
-            fclose(file);
-
-            snprintf(path, sizeof(path), "/proc/%d/status", pid);
-            file = fopen(path, "r");
-            if (file == NULL) {
-                continue; // Solo continúa si no se puede abrir el archivo
-            }
-
             while (fgets(linea, sizeof(linea), file)) {
-                if (sscanf(linea, "VmRSS: %ld kB", &rss) == 1) {
-                    float porcentaje = totalMemReal > 0 ? (float)rss / totalMemReal * 100 : 0; // Calcula porcentaje, verifica primero si totalMemReal es mayor a 0 para evitar division por 0
-                                                                                               // Si totalMemReal es 0 entonces deja unn 0 para evitar datos erroneos
-                    // Preparar buffer con la info recolectada para escribir en pipe
+                if (sscanf(linea, "VmRSS: %ld kB", &rss) == 1) { // Obtiene el rss para la memoria ddel proceso
+                    float porcentaje = totalMemReal > 0 ? (float)rss / totalMemReal * 100 : 0; // Calcula el porcentaje de meem real del prceso
+                    // Preparar buffer con la info recolectada para escribir en el pipe
                     char buffer[256];
                     int n = snprintf(buffer, sizeof(buffer), "[R]%-10d %-20s %-20.2f%%\n", pid, nombre, porcentaje);
-
                     write(pipefd[1], buffer, n); // Escribe en el pipe
                     break;
                 }
